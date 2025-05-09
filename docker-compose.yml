@@ -1,0 +1,91 @@
+services:
+  auth-service:
+    build:
+      context: .
+      dockerfile: auth_service/Dockerfile
+    networks: 
+      - smartnotes-network
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    container_name: auth_service_1
+    environment:
+      - SERVICE_NAME=auth_service_1
+      - PORT=5001
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/authdb
+
+  db:
+    image: postgres:15
+    networks:
+      - smartnotes-network
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: authdb
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "user", "-d", "auth_db", "-h", "localhost", "-p", "5432"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 5s
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    restart: always
+    ports:
+      - "6380:6379"
+    depends_on:
+      consul:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      retries: 3
+      timeout: 10s
+      start_period: 10s
+    networks:
+      - smartnotes-network
+
+  consul:
+    image: consul:1.15.4
+    container_name: consul
+    ports:
+      - "8500:8500"
+    networks:
+      - smartnotes-network
+    command: "agent -dev -client=0.0.0.0"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8500/v1/status/leader"]
+      interval: 30s
+      retries: 3
+      timeout: 10s
+      start_period: 10s
+  
+  consul_loader:
+    build:
+      context: .
+      dockerfile: consul_loader/Dockerfile
+    depends_on:
+      consul:
+        condition: service_healthy
+    environment:
+      - CONSUL_HOST=consul
+      - CONSUL_PORT=8500
+      - CONFIG_FILE=/app/config.json
+    networks:
+      - smartnotes-network
+
+volumes:
+  pgdata:
+
+networks:
+  smartnotes-network:
+    driver: bridge

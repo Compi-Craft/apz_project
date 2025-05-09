@@ -1,0 +1,4 @@
+{
+    "redis/token_servers": "redis:6379"
+}
+  
