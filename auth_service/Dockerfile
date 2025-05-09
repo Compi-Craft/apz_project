@@ -13,4 +13,4 @@ COPY auth_service/ /app
 
 ENV PYTHONPATH=/app
 
-CMD ["python", "-m", "app.nothing"]
+CMD ["python", "run.py"]

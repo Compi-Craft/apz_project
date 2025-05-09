@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Response
 from sqlalchemy.orm import Session
 from app.auth_utils import (
     hash_password, verify_password, create_access_token,
@@ -33,6 +33,7 @@ def logout(authorization: str = Header(...)):
     blacklist_token(token)
     return {"msg": "Logged out"}
 
-@router.route('/health')
-def health_check():
-    return "OK", 200
+@router.get("/health")
+def health_check(response: Response):
+    response.status_code = 200
+    return "OK"

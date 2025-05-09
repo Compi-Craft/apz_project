@@ -1,6 +1,6 @@
 import requests
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:5001"
 
 # Sample user data
 user_data = {
@@ -24,7 +24,19 @@ def test_login():
     response = requests.post(f"{BASE_URL}/login", params=login_data)
     print("Status Code:", response.status_code)
     print("Response:", response.json())
+    return response.json().get("access_token")  # Return the access token
+
+def test_logout(token: str):
+    print("Testing /logout...")
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+    response = requests.post(f"{BASE_URL}/logout", headers=headers)
+    print("Status Code:", response.status_code)
+    print("Response:", response.json())
 
 if __name__ == "__main__":
     test_signup()
-    test_login()
+    token = test_login()  # Get the token from login
+    if token:
+        test_logout(token)  # Pass token to logout function
