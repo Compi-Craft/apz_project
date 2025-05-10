@@ -6,11 +6,13 @@ from app.get_services import register_service, REDIS
 
 app = Flask(__name__)
 
-app.config['JWT_SECRET_KEY'] = 'your_secret_key'
+secret_key = os.getenv("JWT_SECRET", "default_value_if_not_set")
+
+app.config['JWT_SECRET_KEY'] = secret_key
 app.config['JWT_COOKIE_SECURE'] = True
 app.config['JWT_TOKEN_LOCATION'] = ['cookies']
 app.config["JWT_COOKIE_CSRF_PROTECT"] = False
-app.secret_key = 'your_secret_key'
+app.secret_key = secret_key
 
 jwt = JWTManager(app)
 

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Response, Depends, Header
-from fastapi.security import OAuth2PasswordBearer
 from typing import List
 import pika
 import json
+import os
 from app.get_services import MONGO, RABBIT_MQ
 from app.models import NoteCreate, NoteUpdate, Event, NoteAggregate
 from uuid import uuid4
@@ -24,7 +24,7 @@ events_collection = db["events"]
 
 router = APIRouter()
 
-JWT_SECRET = "your_secret_key"
+JWT_SECRET = os.getenv("JWT_SECRET", "default_value_if_not_set")
 
 def get_user_from_token(authorization: str = Header(...)) -> str:
     if not authorization.startswith("Bearer "):

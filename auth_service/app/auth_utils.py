@@ -2,9 +2,10 @@ from passlib.context import CryptContext
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
 import redis
+import os
 from app.get_redis import REDIS_SERVERS
 
-SECRET_KEY = "your_secret_key"
+SECRET_KEY = os.getenv("JWT_SECRET", "default_value_if_not_set")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
