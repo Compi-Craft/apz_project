@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordBearer
 from typing import List
 import pika
 import json
-from app.get_services import MONGO
+from app.get_services import MONGO, RABBIT_MQ
 from app.models import NoteCreate, NoteUpdate, Event, NoteAggregate
 from uuid import uuid4
 from pymongo import MongoClient
@@ -11,7 +11,14 @@ from datetime import datetime
 import jwt
 from fastapi import status
 
-client = MongoClient(MONGO)
+replica_set = "rs0"
+
+
+client = MongoClient(
+    host=MONGO,
+    replicaSet=replica_set,
+    serverSelectionTimeoutMS=5000
+)
 db = client["notes_db"]
 events_collection = db["events"]
 
@@ -36,7 +43,7 @@ def get_user_from_token(authorization: str = Header(...)) -> str:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token")
 
 def publish_event(event):
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBIT_MQ[0]))
     channel = connection.channel()
     channel.queue_declare(queue='note_events', durable=True)
     channel.basic_publish(

@@ -16,7 +16,6 @@ class Event(BaseModel):
     timestamp: datetime
     data: dict
 
-# -------------------- Aggregates --------------------
 class NoteAggregate:
     def __init__(self, note_id):
         self.note_id = note_id

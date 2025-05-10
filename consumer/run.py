@@ -3,7 +3,30 @@ import json
 from pymongo import MongoClient
 from datetime import datetime
 
-mongo_client = MongoClient("mongodb://mongo:27017")
+import consul
+import time
+consul_client = consul.Consul(host="consul")
+
+
+
+def get_members(key):
+    data = None
+    while data is None:
+        index, data = consul_client.kv.get(key)
+        time.sleep(5)
+    return data['Value'].decode().split(",")
+
+MONGO = get_members("mongo")
+RABBIT_MQ = get_members("rabbitmq")
+replica_set = "rs0"
+
+
+mongo_client = MongoClient(
+    host=MONGO,
+    replicaSet=replica_set,
+    serverSelectionTimeoutMS=5000
+)
+
 db = mongo_client["notes_db"]
 events_collection = db["events"]
 
@@ -18,7 +41,7 @@ def callback(ch, method, properties, body):
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 def main():
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBIT_MQ[0]))
     channel = connection.channel()
 
     channel.queue_declare(queue='note_events', durable=True)

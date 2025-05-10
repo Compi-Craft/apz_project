@@ -17,6 +17,42 @@ services:
       - SERVICE_NAME=auth_service_1
       - PORT=5001
 
+  auth_service_2:
+    build:
+      context: .
+      dockerfile: auth_service/Dockerfile
+    networks: 
+      - smartnotes-network
+    ports:
+      - "5002:5002"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    container_name: auth_service_2
+    environment:
+      - SERVICE_NAME=auth_service_2
+      - PORT=5002
+
+  auth_service_3:
+    build:
+      context: .
+      dockerfile: auth_service/Dockerfile
+    networks: 
+      - smartnotes-network
+    ports:
+      - "5003:5003"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    container_name: auth_service_3
+    environment:
+      - SERVICE_NAME=auth_service_3
+      - PORT=5003
+
   db:
     image: postgres:15
     networks:
@@ -32,6 +68,9 @@ services:
       retries: 5
       start_period: 30s
       timeout: 5s
+    depends_on:
+      consul:
+        condition: service_healthy
     volumes:
       - pgdata:/var/lib/postgresql/data
 
@@ -82,27 +121,86 @@ services:
     networks:
       - smartnotes-network
 
-  mongo:
+  mongo1:
     image: mongo:6
-    container_name: notes_mongo
+    container_name: mongo1
     ports:
       - "27017:27017"
+    command: --replSet rs0
     volumes:
-      - mongo_data:/data/db
-    restart: unless-stopped
+      - mongo1_data:/data/db
+    networks:
+      - smartnotes-network
     depends_on:
       consul: 
         condition: service_healthy
-    networks: 
-      - smartnotes-network
     healthcheck:
       test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/27017"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 5s
+  mongo2:
+    image: mongo:6
+    container_name: mongo2
+    command: --replSet rs0
+    volumes:
+      - mongo2_data:/data/db
+    networks:
+      - smartnotes-network
+    depends_on:
+      consul: 
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/27017"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+  mongo3:
+    image: mongo:6
+    container_name: mongo3
+    command: --replSet rs0
+    volumes:
+      - mongo3_data:/data/db
+    networks:
+      - smartnotes-network
+    depends_on:
+      consul: 
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/27017"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+  
+  mongoinit:
+    image: mongo:6
+    container_name: mongoinit
+    depends_on:
+      mongo1:
+        condition: service_healthy
+      mongo2:
+        condition: service_healthy
+      mongo3:
+        condition: service_healthy
+    networks:
+      - smartnotes-network
+    entrypoint: >
+      bash -c "
+        mongosh --host mongo1:27017 --eval '
+          rs.initiate({
+            _id: \"rs0\",
+            members: [
+              { _id: 0, host: \"mongo1:27017\" },
+              { _id: 1, host: \"mongo2:27017\" },
+              { _id: 2, host: \"mongo3:27017\" }
+            ]
+          })'
+      "
 
-  notes_service:
+  notes_service_1:
     build:
       context: .
       dockerfile: notes_service/Dockerfile
@@ -111,42 +209,147 @@ services:
     ports:
       - "5011:5011"
     depends_on:
-      mongo:
-        condition: service_healthy
+      mongoinit:
+        condition: service_started
+      rabbitmq-init:
+        condition: service_started
     container_name: notes_service_1
     environment:
       - SERVICE_NAME=notes_service_1
       - PORT=5011
 
-  rabbitmq:
-    image: rabbitmq:3.12-management
-    container_name: rabbitmq
+  notes_service_2:
+    build:
+      context: .
+      dockerfile: notes_service/Dockerfile
+    networks: 
+      - smartnotes-network
     ports:
-      - "5672:5672"     # основний порт AMQP
-      - "15672:15672"   # веб-інтерфейс RabbitMQ
+      - "5012:5012"
+    depends_on:
+      mongoinit:
+        condition: service_started
+      rabbitmq-init:
+        condition: service_started
+    container_name: notes_service_2
+    environment:
+      - SERVICE_NAME=notes_service_2
+      - PORT=5012
+
+  notes_service_3:
+    build:
+      context: .
+      dockerfile: notes_service/Dockerfile
+    networks: 
+      - smartnotes-network
+    ports:
+      - "5013:5013"
+    depends_on:
+      mongoinit:
+        condition: service_started
+      rabbitmq-init:
+        condition: service_started
+    container_name: notes_service_3
+    environment:
+      - SERVICE_NAME=notes_service_3
+      - PORT=5013
+
+  rabbitmq1:
+    image: rabbitmq:3.12-management
+    container_name: rabbitmq1
+    hostname: rabbitmq1
+    ports:
+      - "5672:5672"
+      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_ERLANG_COOKIE: "supersecretcookie"
+    networks:
+      - smartnotes-network
+    volumes:
+      - rabbitmq1_data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 10s
+
+  rabbitmq2:
+    image: rabbitmq:3.12-management
+    container_name: rabbitmq2
+    hostname: rabbitmq2
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "supersecretcookie"
     networks:
       - smartnotes-network
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq2_data:/var/lib/rabbitmq
+    depends_on:
+      rabbitmq1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  rabbitmq3:
+    image: rabbitmq:3.12-management
+    container_name: rabbitmq3
+    hostname: rabbitmq3
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "supersecretcookie"
+    networks:
+      - smartnotes-network
+    volumes:
+      - rabbitmq3_data:/var/lib/rabbitmq
+    depends_on:
+      rabbitmq1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  rabbitmq-init:
+    image: rabbitmq:3.12-management
+    depends_on:
+      rabbitmq1:
+        condition: service_healthy
+      rabbitmq2:
+        condition: service_healthy
+      rabbitmq3:
+        condition: service_healthy
+    networks:
+      - smartnotes-network
+    entrypoint: >
+      bash -c "
+        sleep 10 &&
+        rabbitmqctl -n rabbit@rabbitmq2 stop_app &&
+        rabbitmqctl -n rabbit@rabbitmq2 join_cluster rabbit@rabbitmq1 &&
+        rabbitmqctl -n rabbit@rabbitmq2 start_app &&
+
+        rabbitmqctl -n rabbit@rabbitmq3 stop_app &&
+        rabbitmqctl -n rabbit@rabbitmq3 join_cluster rabbit@rabbitmq1 &&
+        rabbitmqctl -n rabbit@rabbitmq3 start_app &&
+
+        rabbitmqctl -n rabbit@rabbitmq1 set_policy ha-all \"^\" '{\"ha-mode\":\"all\"}'"
+    restart: "no"
 
   note_consumer:
     build: 
       context: .
       dockerfile: consumer/Dockerfile
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      mongo:
-        condition: service_healthy
+      rabbitmq-init:
+        condition: service_started
+      mongoinit:
+        condition: service_started
     networks: 
       - smartnotes-network
     scale: 3
@@ -169,8 +372,13 @@ services:
 
 volumes:
   pgdata:
+  mongo1_data:
+  mongo2_data:
+  mongo3_data:
   mongo_data:
-  rabbitmq_data:
+  rabbitmq1_data:
+  rabbitmq2_data:
+  rabbitmq3_data:
 
 networks:
   smartnotes-network:

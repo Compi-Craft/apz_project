@@ -22,3 +22,4 @@ def register_service(service_name, service_id, service_port):
     )
 
 MONGO = get_members("mongo")
+RABBIT_MQ = get_members("rabbitmq")
