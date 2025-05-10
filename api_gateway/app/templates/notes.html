@@ -1,0 +1,11 @@
+{% extends "layout.html" %}
+{% block content %}
+    {% for note in notes %}
+        <article class="media content-section">
+          <div class="media-body">
+            <h2><a class="article-title" href="{{ url_for('view_note', note_id=note.note_id) }}">{{ note.title }}</a></h2>
+            <p class="article-content">{{ note.content }}</p>
+          </div>
+        </article>
+    {% endfor %}
+{% endblock content %}
