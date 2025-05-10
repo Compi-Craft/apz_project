@@ -151,6 +151,22 @@ services:
       - smartnotes-network
     scale: 3
 
+  api_gateway:
+    build:
+      context: .
+      dockerfile: api_gateway/Dockerfile
+    networks: 
+      - smartnotes-network
+    ports:
+      - "5000:5000"
+    depends_on:
+      consul:
+        condition: service_healthy
+    container_name: api_gateway
+    environment:
+      - SERVICE_NAME=api_gateway
+      - PORT=5000
+
 volumes:
   pgdata:
   mongo_data:

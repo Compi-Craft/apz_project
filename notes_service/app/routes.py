@@ -117,7 +117,6 @@ def get_note(note_id: str, user_id: str = Depends(get_user_from_token)):
     if aggregate.state.get("deleted"):
         raise HTTPException(status_code=410, detail="Note was deleted")
 
-    # Ensure the user is the owner of the note
     if aggregate.state.get("user_id") != user_id:
         raise HTTPException(status_code=403, detail="You are not authorized to view this note")
 

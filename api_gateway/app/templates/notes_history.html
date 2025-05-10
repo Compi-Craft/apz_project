@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+{% block content %}
+    {% for note in notes %}
+        <article class="media content-section">
+          <div class="media-body">
+            <div class="article-metadata">
+              <span class="mr-2" href="#">{{ note.event_type }}</span>
+              <small class="text-muted">{{ note.timestamp }}</small>
+            </div>
+            <h2 class="article-title">{{ note.data.title }}</h2>
+            <p class="article-content">{{ note.data.content }}</p>
+          </div>
+        </article>
+    {% endfor %}
+{% endblock content %}

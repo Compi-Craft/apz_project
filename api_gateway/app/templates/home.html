@@ -1,4 +1,8 @@
 {% extends "layout.html" %}
 {% block content %}
-    <h1>Very cool empty home page!<h1/>
+    {% if current_user.is_authenticated %}
+        <h1>Welcome {{ current_user }}</h1>
+    {% else %}
+        <h1> Welcome to Notes!</h1>
+    {% endif %}
 {% endblock content %}

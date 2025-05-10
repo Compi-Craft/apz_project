@@ -7,7 +7,7 @@ COPY requirements.txt .
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY notes_service/ /app
+COPY api_gateway/ /app
 
 ENV PYTHONPATH=/app
 
