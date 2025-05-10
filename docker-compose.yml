@@ -1,5 +1,5 @@
 services:
-  auth-service:
+  auth_service_1:
     build:
       context: .
       dockerfile: auth_service/Dockerfile
@@ -16,7 +16,6 @@ services:
     environment:
       - SERVICE_NAME=auth_service_1
       - PORT=5001
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/authdb
 
   db:
     image: postgres:15
@@ -83,8 +82,79 @@ services:
     networks:
       - smartnotes-network
 
+  mongo:
+    image: mongo:6
+    container_name: notes_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+    depends_on:
+      consul: 
+        condition: service_healthy
+    networks: 
+      - smartnotes-network
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/27017"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  notes_service:
+    build:
+      context: .
+      dockerfile: notes_service/Dockerfile
+    networks: 
+      - smartnotes-network
+    ports:
+      - "5011:5011"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    container_name: notes_service_1
+    environment:
+      - SERVICE_NAME=notes_service_1
+      - PORT=5011
+
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"     # основний порт AMQP
+      - "15672:15672"   # веб-інтерфейс RabbitMQ
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    networks:
+      - smartnotes-network
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  note_consumer:
+    build: 
+      context: .
+      dockerfile: consumer/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    networks: 
+      - smartnotes-network
+    scale: 3
+
 volumes:
   pgdata:
+  mongo_data:
+  rabbitmq_data:
 
 networks:
   smartnotes-network:

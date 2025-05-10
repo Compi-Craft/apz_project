@@ -1,8 +1,8 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from app.get_redis import POSTGRES
 
-SQLALCHEMY_DATABASE_URL = "postgresql://postgres:postgres@db:5432/authdb"
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+engine = create_engine(POSTGRES[0])
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_db():

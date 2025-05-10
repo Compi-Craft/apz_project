@@ -21,5 +21,4 @@ def register_service(service_name, service_id, service_port):
         check=consul.Check.http(f'http://{service_id}:{service_port}/health', interval="10s")
     )
 
-REDIS_SERVERS = get_members('redis/token_servers')
-POSTGRES = get_members("postgres")
+MONGO = get_members("mongo")

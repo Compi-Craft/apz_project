@@ -1,4 +1,6 @@
 {
-    "redis/token_servers": "redis:6379"
+    "redis/token_servers": "redis:6379",
+    "mongo": "mongodb://mongo:27017",
+    "postgres": "postgresql://postgres:postgres@db:5432/authdb"
 }
   

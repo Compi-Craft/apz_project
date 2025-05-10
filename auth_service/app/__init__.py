@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-import uvicorn
 from app import routes
 from app.database import engine
 from app.models import Base
@@ -16,5 +15,3 @@ app = FastAPI()
 
 
 app.include_router(routes.router)
-
-port = int(os.environ.get("PORT", 8000))
