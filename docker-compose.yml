@@ -206,6 +206,24 @@ services:
           })'
       "
 
+  mongo-express:
+    image: mongo-express
+    container_name: mongo-express
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo1
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: true
+      ME_CONFIG_BASICAUTH: "false"
+      ME_CONFIG_MONGODB_URL: mongodb://mongo1:27017
+    networks:
+      - smartnotes-network
+    depends_on:
+      mongo1:
+        condition: service_healthy
+
   notes_service_1:
     build:
       context: .
@@ -339,9 +357,14 @@ services:
         condition: service_healthy
     networks:
       - smartnotes-network
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "supersecretcookie"
     entrypoint: >
       bash -c "
-        sleep 10 &&
+        for i in {1..10}; do
+          rabbitmqctl -n rabbit@rabbitmq2 status && break || sleep 5
+        done &&
+
         rabbitmqctl -n rabbit@rabbitmq2 stop_app &&
         rabbitmqctl -n rabbit@rabbitmq2 join_cluster rabbit@rabbitmq1 &&
         rabbitmqctl -n rabbit@rabbitmq2 start_app &&
@@ -350,8 +373,10 @@ services:
         rabbitmqctl -n rabbit@rabbitmq3 join_cluster rabbit@rabbitmq1 &&
         rabbitmqctl -n rabbit@rabbitmq3 start_app &&
 
-        rabbitmqctl -n rabbit@rabbitmq1 set_policy ha-all \"^\" '{\"ha-mode\":\"all\"}'"
+        rabbitmqctl -n rabbit@rabbitmq1 set_policy ha-all \"^\" '{\"ha-mode\":\"all\"}'
+      "
     restart: "no"
+
 
   note_consumer:
     build: 
